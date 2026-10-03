@@ -133,3 +133,6 @@ footer p { margin: 0 0 8px; }
 @media (min-width: 640px) {
   .socials { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* Beehiiv's form iframe: matching color-scheme lets its transparent background show through on this dark page */
+.signup-slot iframe { color-scheme: normal; }
