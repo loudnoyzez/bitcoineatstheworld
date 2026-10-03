@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="16" fill="#151517"/>
-  <!-- a world with a bite taken out of it -->
-  <path d="M32 10a22 22 0 1 0 19.05 33L32 32l19.05-11A22 22 0 0 0 32 10z" fill="#f7931a"/>
-  <text x="27" y="40" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#1a1206" text-anchor="middle">₿</text>
-</svg>
