@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Everything, priced in bitcoin | Bitcoin Eats the World</title>
+  <meta name="description" content="Gold, oil, a Big Mac, a house: everyday things priced in sats and bitcoin, with a live bitcoin price.">
+  <link rel="icon" href="brand/betw-icon-512.png" type="image/png">
+  <link rel="canonical" href="https://bitcoineatstheworld.com/prices">
+  <meta property="og:title" content="Everything, priced in bitcoin">
+  <meta property="og:description" content="Gold, oil, a Big Mac, a house: priced in sats, live.">
+  <meta property="og:url" content="https://bitcoineatstheworld.com/prices">
+  <meta property="og:image" content="https://bitcoineatstheworld.com/brand/betw-thumbnail-1200x630.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="styles.css?v=2">
+  <style>
+    .top { padding: 40px 0 8px; text-align: center; }
+    .top a.home { color: var(--muted); text-decoration: none; font-size: .95rem; }
+    .top h1 { margin-top: 14px; }
+    .ticker { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 18px 0 6px; }
+    .pill { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; font-weight: 600; }
+    .pill b { color: var(--orange); }
+    .stamp { color: var(--muted); font-size: .85rem; text-align: center; margin: 4px 0 0; }
+    .convert { margin: 26px 0 10px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+    .convert label { display: block; color: var(--muted); font-size: .9rem; margin-bottom: 8px; }
+    .convert .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .convert input { flex: 1 1 140px; min-width: 0; font: inherit; font-size: 1.2rem; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+    .convert output { font-size: 1.25rem; font-weight: 700; }
+    .convert output b { color: var(--orange); }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 18px 0 8px; }
+    @media (min-width: 560px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+    .card .name { font-weight: 700; }
+    .card .usd { color: var(--muted); font-size: .9rem; }
+    .card .sats { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; margin-top: 6px; }
+    .card .sats small { font-size: .95rem; font-weight: 600; color: var(--muted); }
+    .card .btc { color: var(--orange); font-weight: 600; font-size: .95rem; }
+    .card .src { color: #77746e; font-size: .78rem; margin-top: 6px; }
+    .note { color: var(--muted); font-size: .9rem; }
+    footer { color: #77746e; font-size: .82rem; padding: 26px 0 40px; border-top: 1px solid var(--line); margin-top: 26px; }
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <a class="home" href="./">← Bitcoin Eats the World</a>
+    <h1>Everything, priced in <span>bitcoin</span></h1>
+    <p class="lede">1 bitcoin = 100,000,000 sats. Here's what things cost in sats.</p>
+    <div class="ticker">
+      <div class="pill">1 BTC = <b id="btcusd">…</b></div>
+      <div class="pill">$1 = <b id="satsper">…</b> sats</div>
+    </div>
+    <p class="stamp" id="stamp">Loading the live bitcoin price…</p>
+  </header>
+
+  <section class="convert" aria-label="Convert dollars to sats">
+    <label for="usd">Price anything: type a dollar amount</label>
+    <div class="row">
+      <input id="usd" type="number" inputmode="decimal" min="0" step="any" value="100">
+      <output id="usdout" for="usd">…</output>
+    </div>
+  </section>
+
+  <div class="grid" id="grid"></div>
+  <p class="note">Item prices are US dollar prices, rounded, with their source and date. The bitcoin price is live. Numbers update when you reload.</p>
+
+  <footer>
+    Education and entertainment only. Not financial advice. Bitcoin is volatile, and you can lose money.<br>
+    Bitcoin price: Coinbase (fallback: CoinGecko). Commodity prices: daily futures closes (Yahoo Finance). Everyday items: sources as listed.<br>
+    Get one chart a week, free: <a href="./#newsletter">The Weekly Bite</a>
+  </footer>
+</main>
+
+<script>
+// Item prices in USD. Keep each one sourced and dated. "check": true = verify before publishing.
+const ITEMS = [
+  { name: "Ounce of gold",            usd: 4162.30, src: "COMEX gold futures close, 2 Oct 2026" },
+  { name: "Ounce of silver",          usd: 59.98,   src: "COMEX silver futures close, 2 Oct 2026" },
+  { name: "Barrel of oil (WTI)",      usd: 91.11,   src: "NYMEX WTI futures close, 2 Oct 2026" },
+  { name: "Pound of copper",          usd: 6.49,    src: "COMEX copper futures close, 2 Oct 2026" },
+  { name: "Big Mac (US)",             usd: 5.79,    src: "The Economist Big Mac Index (US), 2025", check: true },
+  { name: "Gallon of gas (US avg)",   usd: 3.10,    src: "EIA US regular gasoline average, 2025", check: true },
+  { name: "Netflix, 1 month (Standard, US)", usd: 17.99, src: "Netflix US price list, 2025", check: true },
+  { name: "Median US home",           usd: 410000,  src: "NAR median existing-home price, 2025", check: true },
+];
+const FALLBACK = { usd: 84881, when: "3 Oct 2026 close" };   // used only if both live sources fail
+
+const fmtUSD = n => n >= 1000 ? "$" + Math.round(n).toLocaleString("en-US") : "$" + n.toFixed(2);
+const fmtSats = n => n >= 1e6 ? (n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 2 }) + "M" : Math.round(n).toLocaleString("en-US");
+const fmtBTC = n => n >= 1 ? n.toLocaleString("en-US", { maximumFractionDigits: 3 }) : n.toFixed(n >= 0.01 ? 4 : 6);
+
+async function livePrice() {
+  try {
+    const r = await fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot", { cache: "no-store" });
+    const j = await r.json(); const v = parseFloat(j.data.amount); if (v > 0) return { usd: v, from: "Coinbase" };
+  } catch (e) {}
+  try {
+    const r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd", { cache: "no-store" });
+    const j = await r.json(); const v = j.bitcoin.usd; if (v > 0) return { usd: v, from: "CoinGecko" };
+  } catch (e) {}
+  return null;
+}
+
+function render(btcUsd) {
+  document.getElementById("btcusd").textContent = fmtUSD(btcUsd);
+  document.getElementById("satsper").textContent = Math.round(1e8 / btcUsd).toLocaleString("en-US");
+  const grid = document.getElementById("grid"); grid.innerHTML = "";
+  for (const it of ITEMS) {
+    const btc = it.usd / btcUsd, sats = btc * 1e8;
+    const el = document.createElement("div"); el.className = "card";
+    el.innerHTML = `<div class="name">${it.name}</div><div class="usd">${fmtUSD(it.usd)}</div>
+      <div class="sats">${fmtSats(sats)} <small>sats</small></div>
+      <div class="btc">${fmtBTC(btc)} BTC</div><div class="src">${it.src}</div>`;
+    grid.appendChild(el);
+  }
+  const inp = document.getElementById("usd"), out = document.getElementById("usdout");
+  const conv = () => { const v = parseFloat(inp.value) || 0; out.innerHTML = `= <b>${fmtSats(v / btcUsd * 1e8)}</b> sats`; };
+  inp.oninput = conv; conv();
+}
+
+(async () => {
+  render(FALLBACK.usd);
+  const live = await livePrice();
+  const stamp = document.getElementById("stamp");
+  if (live) { render(live.usd); stamp.textContent = `Live from ${live.from}, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`; }
+  else { stamp.textContent = `Live price unavailable; showing the ${FALLBACK.when}.`; }
+})();
+</script>
+</body>
+</html>
