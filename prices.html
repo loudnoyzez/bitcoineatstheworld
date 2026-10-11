@@ -38,6 +38,26 @@
     .card .btc { color: var(--orange); font-weight: 600; font-size: .95rem; }
     .card .src { color: #77746e; font-size: .78rem; margin-top: 6px; }
     .note { color: var(--muted); font-size: .9rem; }
+    .tabs { display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px; margin: 22px auto 0; max-width: 340px; }
+    .tabs button { flex: 1; font: inherit; font-weight: 700; padding: 10px 0; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; }
+    .tabs button[aria-selected="true"] { background: var(--orange); color: var(--orange-ink); }
+    .card a.hist { display: inline-block; margin-top: 8px; font-weight: 600; font-size: .9rem; text-decoration: none; }
+    .hcard { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 12px 0; scroll-margin-top: 16px; }
+    .hcard h3 { margin: 0 0 2px; font-size: 1.1rem; }
+    .hcard .big { font-size: 1.05rem; margin: 2px 0 8px; }
+    .hcard .big b { color: var(--orange); }
+    .hcard svg { width: 100%; height: auto; display: block; }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+    .steps div { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px; text-align: center; }
+    .steps span { display: block; color: var(--muted); font-size: .75rem; }
+    .steps b { font-size: .95rem; }
+    .dip { color: var(--muted); font-size: .85rem; margin-top: 8px; }
+    .intro { color: var(--muted); margin: 18px 0 4px; }
+    details.read { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; margin: 12px 0; }
+    details.read summary { font-weight: 700; cursor: pointer; }
+    details.read ul { margin: 10px 0 2px; padding-left: 20px; color: var(--muted); }
+    details.read li { margin: 6px 0; }
+    details.read b { color: var(--text); }
     footer { color: #77746e; font-size: .82rem; padding: 26px 0 40px; border-top: 1px solid var(--line); margin-top: 26px; }
   </style>
 </head>
@@ -52,7 +72,13 @@
       <div class="pill">$1 = <b id="satsper">…</b> sats</div>
     </div>
     <p class="stamp" id="stamp">Loading the live bitcoin price…</p>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="t-now" aria-selected="true" onclick="show('now')">Now</button>
+      <button role="tab" id="t-history" aria-selected="false" onclick="show('history')">History</button>
+    </div>
   </header>
+
+  <div id="tab-now">
 
   <section class="convert" aria-label="Convert dollars to sats">
     <label for="usd">Price anything: type a dollar amount</label>
@@ -64,6 +90,23 @@
 
   <div class="grid" id="grid"></div>
   <p class="note">Item prices are US dollar prices, rounded, with their source and date. The bitcoin price is live. Numbers update when you reload.</p>
+  </div>
+
+  <div id="tab-history" hidden>
+    <p class="intro">What each thing has cost <b>in sats</b>, month by month since 2014. At every 4-year checkpoint since 2014, each of these cost fewer sats. Not every 4-year window, though: the bumps are Bitcoin's crashes, and each card shows how often the cost went the other way. History, not a forecast.</p>
+    <details class="read" open>
+      <summary>How to read this (the honest version)</summary>
+      <ul>
+        <li><b>It's mostly one fact, seen many ways.</b> An item's price in sats is its dollar price divided by bitcoin's dollar price. When everything gets cheaper in sats, that's mostly bitcoin's price rising, not each item changing.</li>
+        <li><b>Fixed windows, no cherry-picking.</b> The checkpoints are every 4 years from where the data starts (Sep 2014). Each card also counts every 4-year window where the cost went the <i>other</i> way.</li>
+        <li><b>Items are picked because you know them,</b> not because they make bitcoin look good. None gets dropped for looking bad.</li>
+        <li><b>The bumps are crashes.</b> When bitcoin falls, things suddenly cost more sats. That's shown, not hidden.</li>
+        <li><b>History, not a forecast.</b> You still pay rent in your own currency, and bitcoin can fall 50% or more against it.</li>
+      </ul>
+    </details>
+    <div id="hist"></div>
+    <p class="note">More items (Big Mac, gas, homes) are coming. Monthly closes; latest month is partial.</p>
+  </div>
 
   <footer>
     Education and entertainment only. Not financial advice. Bitcoin is volatile, and you can lose money.<br>
@@ -75,10 +118,10 @@
 <script>
 // Item prices in USD. Keep each one sourced and dated. "check": true = verify before publishing.
 const ITEMS = [
-  { name: "Ounce of gold",            usd: 4162.30, src: "COMEX gold futures close, 2 Oct 2026" },
-  { name: "Ounce of silver",          usd: 59.98,   src: "COMEX silver futures close, 2 Oct 2026" },
-  { name: "Barrel of oil (WTI)",      usd: 91.11,   src: "NYMEX WTI futures close, 2 Oct 2026" },
-  { name: "Pound of copper",          usd: 6.49,    src: "COMEX copper futures close, 2 Oct 2026" },
+  { name: "Ounce of gold", hist: "gold",            usd: 4162.30, src: "COMEX gold futures close, 2 Oct 2026" },
+  { name: "Ounce of silver", hist: "silver",          usd: 59.98,   src: "COMEX silver futures close, 2 Oct 2026" },
+  { name: "Barrel of oil (WTI)", hist: "oil",      usd: 91.11,   src: "NYMEX WTI futures close, 2 Oct 2026" },
+  { name: "Pound of copper", hist: "copper",          usd: 6.49,    src: "COMEX copper futures close, 2 Oct 2026" },
   { name: "Big Mac (US)",             usd: 6.12,    src: "The Economist Big Mac Index (US), Jan 2026" },
   { name: "Gallon of gas (US avg)",   usd: 4.36,    src: "US regular gasoline average, Sept 2026 (EIA/BTS)" },
   { name: "Netflix, 1 month (Standard, US)", usd: 19.99, src: "Netflix US price, since Mar 2026" },
@@ -111,7 +154,8 @@ function render(btcUsd) {
     const el = document.createElement("div"); el.className = "card";
     el.innerHTML = `<div class="name">${it.name}</div><div class="usd">${fmtUSD(it.usd)}</div>
       <div class="sats">${fmtSats(sats)} <small>sats</small></div>
-      <div class="btc">${fmtBTC(btc)} BTC</div><div class="src">${it.src}</div>`;
+      <div class="btc">${fmtBTC(btc)} BTC</div><div class="src">${it.src}</div>
+      ${it.hist ? `<a class="hist" href="#h-${it.hist}" onclick="show('history','h-${it.hist}');return false;">See history →</a>` : ""}`;
     grid.appendChild(el);
   }
   const inp = document.getElementById("usd"), out = document.getElementById("usdout");
@@ -119,8 +163,71 @@ function render(btcUsd) {
   inp.oninput = conv; conv();
 }
 
+function show(tab, anchor) {
+  for (const t of ["now", "history"]) {
+    document.getElementById("tab-" + t).hidden = t !== tab;
+    document.getElementById("t-" + t).setAttribute("aria-selected", t === tab);
+  }
+  history.replaceState(null, "", tab === "history" ? "#history" : "#");
+  if (anchor) setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ block: "start" }), 30);
+  else window.scrollTo({ top: 0 });
+}
+
+const fmtShort = n => n >= 1e9 ? (n / 1e9).toFixed(n >= 1e10 ? 0 : 1) + "B" : n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M"
+  : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "K" : String(n);
+const monthName = m => new Date(m + "-15").toLocaleDateString("en-US", { month: "short", year: "numeric" });
+
+function chart(series) {
+  const W = 340, H = 170, L = 38, R = 8, T = 8, B = 22;
+  const vals = series.map(p => p[1]), lo = Math.min(...vals) * 0.8, hi = Math.max(...vals) * 1.25;
+  const t0 = Date.parse(series[0][0] + "-15"), t1 = Date.parse(series.at(-1)[0] + "-15");
+  const x = m => L + (Date.parse(m + "-15") - t0) / (t1 - t0) * (W - L - R);
+  const y = v => T + (Math.log(hi) - Math.log(v)) / (Math.log(hi) - Math.log(lo)) * (H - T - B);
+  let g = "";
+  for (let e = Math.ceil(Math.log10(lo)); e <= Math.floor(Math.log10(hi)); e++) {
+    const v = 10 ** e, yy = y(v).toFixed(1);
+    g += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="#26262a"/><text x="${L - 5}" y="${+yy + 4}" fill="#a3a09a" font-size="10" text-anchor="end">${fmtShort(v)}</text>`;
+  }
+  for (const yr of [2016, 2018, 2020, 2022, 2024, 2026]) {
+    const xx = x(yr + "-01"); if (xx > L && xx < W - R) g += `<text x="${xx.toFixed(1)}" y="${H - 6}" fill="#a3a09a" font-size="10" text-anchor="middle">${yr}</text>`;
+  }
+  const d = series.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" ");
+  const last = series.at(-1);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cost in sats over time, log scale">${g}<path d="${d}" fill="none" stroke="#f7931a" stroke-width="2"/>
+    <circle cx="${x(last[0]).toFixed(1)}" cy="${y(last[1]).toFixed(1)}" r="3.5" fill="#fff"/></svg>`;
+}
+
+async function renderHistory() {
+  let data;
+  try { data = await (await fetch("data/history.json", { cache: "no-store" })).json(); } catch (e) { return; }
+  const box = document.getElementById("hist"); box.innerHTML = "";
+  for (const [key, it] of Object.entries(data.items)) {
+    const s = it.series, first = s[0], last = s.at(-1);
+    const at = m => (s.find(p => p[0] === m) || s.find(p => p[0] > m) || last);
+    const steps = [first, at("2018-09"), at("2022-09"), last];
+    // biggest bounce: the most the cost in sats ever rose after a low (a Bitcoin crash)
+    let lowSoFar = s[0], best = { r: 1 };
+    for (const p of s) { if (p[1] < lowSoFar[1]) lowSoFar = p; const r = p[1] / lowSoFar[1]; if (r > best.r) best = { r, from: lowSoFar[0], to: p[0] }; }
+    const f = (1 - last[1] / first[1]) * 100, fell = f >= 99 ? f.toFixed(1) : Math.round(f);
+    let up = 0, n = 0;
+    for (let i = 0; i + 48 < s.length; i++) { n++; if (s[i + 48][1] >= s[i][1]) up++; }   // rolling 4-year windows
+    const el = document.createElement("div"); el.className = "hcard"; el.id = "h-" + key;
+    el.innerHTML = `<h3>${it.name}</h3>
+      <div class="big">${fmtShort(first[1])} sats in ${monthName(first[0])} → <b>${fmtShort(last[1])} sats</b> now (${fell}% fewer)</div>
+      ${chart(s)}
+      <div class="steps">${steps.map(p => `<div><span>${monthName(p[0])}</span><b>${fmtShort(p[1])}</b></div>`).join("")}</div>
+      <div class="dip">Worst stretch: the cost rose ${best.r.toFixed(1)}× from ${monthName(best.from)} to ${monthName(best.to)}, during a Bitcoin crash.<br>
+      4-year windows where it cost <i>more</i> sats: ${up ? `${up} of ${n}` : `none of ${n}`}.</div>`;
+    box.appendChild(el);
+  }
+}
+
 (async () => {
   render(FALLBACK.usd);
+  renderHistory().then(() => {
+    if (location.hash.startsWith("#h-")) show("history", location.hash.slice(1));
+    else if (location.hash === "#history") show("history");
+  });
   const live = await livePrice();
   const stamp = document.getElementById("stamp");
   if (live) { render(live.usd); stamp.textContent = `Live from ${live.from}, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`; }
