@@ -58,6 +58,21 @@
     details.read ul { margin: 10px 0 2px; padding-left: 20px; color: var(--muted); }
     details.read li { margin: 6px 0; }
     details.read b { color: var(--text); }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 16px 0 6px; }
+    .chips button { font: inherit; font-weight: 700; font-size: .92rem; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line);
+      background: var(--panel); color: var(--muted); cursor: pointer; }
+    .chips button[aria-pressed="true"] { border-color: var(--orange); color: var(--orange); }
+    .how { color: #77746e; font-size: .82rem; margin: 6px 0 0; }
+    .gnote { color: var(--muted); font-size: .9rem; margin: 10px 0 0; }
+    table.mk { width: 100%; border-collapse: collapse; font-size: .9rem; margin-top: 10px; }
+    table.mk th { text-align: right; color: #77746e; font-weight: 600; font-size: .75rem; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+    table.mk th:first-child, table.mk td:first-child { text-align: left; }
+    table.mk td { text-align: right; padding: 8px 4px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    table.mk td:first-child { white-space: normal; font-weight: 600; }
+    table.mk tr { cursor: pointer; }
+    table.mk tr.sel td { color: var(--orange); }
+    table.mk td.dn { color: #7fbf7f; } table.mk td.up { color: #e07a6a; }
+    @media (max-width: 480px) { table.mk .wide { display: none; } }
     footer { color: #77746e; font-size: .82rem; padding: 26px 0 40px; border-top: 1px solid var(--line); margin-top: 26px; }
   </style>
 </head>
@@ -89,28 +104,29 @@
   </section>
 
   <div class="grid" id="grid"></div>
-  <p class="note">Item prices are US dollar prices, rounded, with their source and date. The bitcoin price is live. Numbers update when you reload.</p>
+  <p class="note">Item prices are US dollar prices with their source and date. Market prices refresh daily; the bitcoin price is live.</p>
   </div>
 
   <div id="tab-history" hidden>
-    <p class="intro">What each thing has cost <b>in sats</b>, month by month since 2014. At every 4-year checkpoint since 2014, each of these cost fewer sats. Not every 4-year window, though: the bumps are Bitcoin's crashes, and each card shows how often the cost went the other way. History, not a forecast.</p>
-    <details class="read" open>
+    <p class="intro">What things have cost <b>in sats</b>, month by month since bitcoin's data starts (Sep 2014). Over most long stretches, nearly everything got cheaper in sats. Not every stretch, though: the bumps are Bitcoin's crashes, and the table counts how often the cost went the other way. History, not a forecast.</p>
+    <details class="read">
       <summary>How to read this (the honest version)</summary>
       <ul>
-        <li><b>It's mostly one fact, seen many ways.</b> An item's price in sats is its dollar price divided by bitcoin's dollar price. When everything gets cheaper in sats, that's mostly bitcoin's price rising, not each item changing.</li>
-        <li><b>Fixed windows, no cherry-picking.</b> The checkpoints are every 4 years from where the data starts (Sep 2014). Each card also counts every 4-year window where the cost went the <i>other</i> way.</li>
-        <li><b>Items are picked because you know them,</b> not because they make bitcoin look good. None gets dropped for looking bad.</li>
+        <li><b>It's mostly one fact, seen many ways.</b> An item's price in sats is its dollar price divided by bitcoin's dollar price. When everything gets cheaper in sats, that's mostly bitcoin's price rising, not each item changing. 55 lines going down is not 55 proofs.</li>
+        <li><b>Fixed windows, no cherry-picking.</b> Every line starts in Sep 2014, where the bitcoin data starts. "Last 4 years" and "last year" are always the latest 48 and 12 months, whichever way they went. The last column counts every 4-year window where the cost went the <i>other</i> way.</li>
+        <li><b>Lists picked by a rule,</b> not by how bitcoin looks against them (each list says its rule). Nothing gets dropped for looking bad.</li>
         <li><b>The bumps are crashes.</b> When bitcoin falls, things suddenly cost more sats. That's shown, not hidden.</li>
         <li><b>History, not a forecast.</b> You still pay rent in your own currency, and bitcoin can fall 50% or more against it.</li>
       </ul>
     </details>
-    <div id="hist"></div>
-    <p class="note">More items (Big Mac, gas, homes) are coming. Monthly closes; latest month is partial.</p>
+    <div class="chips" role="group" aria-label="Choose a list" id="chips"></div>
+    <div class="hcard" id="group"></div>
+    <p class="note" id="dstamp">Month-end closes; the latest month is partial. "Now" uses the live bitcoin price.</p>
   </div>
 
   <footer>
     Education and entertainment only. Not financial advice. Bitcoin is volatile, and you can lose money.<br>
-    Bitcoin price: Coinbase (fallback: CoinGecko). Commodity prices: daily futures closes (Yahoo Finance). Everyday items: sources as listed.<br>
+    Bitcoin price: Coinbase (fallback: CoinGecko). Commodities, currencies and stock indexes: Yahoo Finance closes, refreshed daily. Everyday items: sources as listed, updated by hand.<br>
     Get one chart a week, free: <a href="./#newsletter">The Weekly Bite</a> · <a href="disclosures.html">Disclosures</a>
   </footer>
 </main>
@@ -118,10 +134,11 @@
 <script>
 // Item prices in USD. Keep each one sourced and dated. "check": true = verify before publishing.
 const ITEMS = [
-  { name: "Ounce of gold", hist: "gold",            usd: 4162.30, src: "COMEX gold futures close, 2 Oct 2026" },
-  { name: "Ounce of silver", hist: "silver",          usd: 59.98,   src: "COMEX silver futures close, 2 Oct 2026" },
-  { name: "Barrel of oil (WTI)", hist: "oil",      usd: 91.11,   src: "NYMEX WTI futures close, 2 Oct 2026" },
-  { name: "Pound of copper", hist: "copper",          usd: 6.49,    src: "COMEX copper futures close, 2 Oct 2026" },
+  // market items: price and date come from data/markets.json (refreshed daily); usd here is only the fallback
+  { name: "Ounce of gold", hist: "gold",            usd: 4162.30, src: "COMEX gold futures close", asof: "2 Oct 2026" },
+  { name: "Ounce of silver", hist: "silver",          usd: 59.98,   src: "COMEX silver futures close", asof: "2 Oct 2026" },
+  { name: "Barrel of oil (WTI)", hist: "oil",      usd: 91.11,   src: "NYMEX WTI futures close", asof: "2 Oct 2026" },
+  { name: "Pound of copper", hist: "copper",          usd: 6.49,    src: "COMEX copper futures close", asof: "2 Oct 2026" },
   { name: "Big Mac (US)",             usd: 6.12,    src: "The Economist Big Mac Index (US), Jan 2026" },
   { name: "Gallon of gas (US avg)",   usd: 4.36,    src: "US regular gasoline average, Sept 2026 (EIA/BTS)" },
   { name: "Netflix, 1 month (Standard, US)", usd: 19.99, src: "Netflix US price, since Mar 2026" },
@@ -154,8 +171,8 @@ function render(btcUsd) {
     const el = document.createElement("div"); el.className = "card";
     el.innerHTML = `<div class="name">${it.name}</div><div class="usd">${fmtUSD(it.usd)}</div>
       <div class="sats">${fmtSats(sats)} <small>sats</small></div>
-      <div class="btc">${fmtBTC(btc)} BTC</div><div class="src">${it.src}</div>
-      ${it.hist ? `<a class="hist" href="#h-${it.hist}" onclick="show('history','h-${it.hist}');return false;">See history →</a>` : ""}`;
+      <div class="btc">${fmtBTC(btc)} BTC</div><div class="src">${it.src}${it.asof ? ", " + it.asof : ""}</div>
+      ${it.hist ? `<a class="hist" href="#history/commodities/${it.hist}" onclick="openItem('commodities','${it.hist}');return false;">See history →</a>` : ""}`;
     grid.appendChild(el);
   }
   const inp = document.getElementById("usd"), out = document.getElementById("usdout");
@@ -168,7 +185,7 @@ function show(tab, anchor) {
     document.getElementById("tab-" + t).hidden = t !== tab;
     document.getElementById("t-" + t).setAttribute("aria-selected", t === tab);
   }
-  history.replaceState(null, "", tab === "history" ? "#history" : "#");
+  if (tab === "history") { if (MK) renderGroup(); } else history.replaceState(null, "", "#");
   if (anchor) setTimeout(() => document.getElementById(anchor)?.scrollIntoView({ block: "start" }), 30);
   else window.scrollTo({ top: 0 });
 }
@@ -177,61 +194,95 @@ const fmtShort = n => n >= 1e9 ? (n / 1e9).toFixed(n >= 1e10 ? 0 : 1) + "B" : n 
   : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "K" : String(n);
 const monthName = m => new Date(m + "-15").toLocaleDateString("en-US", { month: "short", year: "numeric" });
 
-function chart(series) {
-  const W = 340, H = 170, L = 38, R = 8, T = 8, B = 22;
-  const vals = series.map(p => p[1]), lo = Math.min(...vals) * 0.8, hi = Math.max(...vals) * 1.25;
-  const t0 = Date.parse(series[0][0] + "-15"), t1 = Date.parse(series.at(-1)[0] + "-15");
+let MK = null, btcLive = null, view = { g: "commodities", id: null };
+const COLORS = "#5f5c57";
+
+// Lines are indexed: 100% = what the item cost in sats in its first month (Sep 2014). Log scale, so a halving looks the same everywhere.
+function groupChart(items, selId) {
+  const W = 340, H = 200, L = 40, R = 8, T = 8, B = 22;
+  const lines = items.map(it => ({ id: it.id, pts: it.series.map(p => [p[0], p[1] / it.series[0][1] * 100]) }));
+  const all = lines.flatMap(l => l.pts.map(p => p[1]));
+  const lo = Math.min(...all) * 0.8, hi = Math.max(...all) * 1.25;
+  const months = items[0].series.map(p => p[0]);
+  const t0 = Date.parse(months[0] + "-15"), t1 = Date.parse(months.at(-1) + "-15");
   const x = m => L + (Date.parse(m + "-15") - t0) / (t1 - t0) * (W - L - R);
   const y = v => T + (Math.log(hi) - Math.log(v)) / (Math.log(hi) - Math.log(lo)) * (H - T - B);
   let g = "";
   for (let e = Math.ceil(Math.log10(lo)); e <= Math.floor(Math.log10(hi)); e++) {
     const v = 10 ** e, yy = y(v).toFixed(1);
-    g += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="#26262a"/><text x="${L - 5}" y="${+yy + 4}" fill="#a3a09a" font-size="10" text-anchor="end">${fmtShort(v)}</text>`;
+    g += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="#26262a"/><text x="${L - 5}" y="${+yy + 4}" fill="#a3a09a" font-size="10" text-anchor="end">${v >= 1 ? v : v.toFixed(-e)}%</text>`;
   }
   for (const yr of [2016, 2018, 2020, 2022, 2024, 2026]) {
     const xx = x(yr + "-01"); if (xx > L && xx < W - R) g += `<text x="${xx.toFixed(1)}" y="${H - 6}" fill="#a3a09a" font-size="10" text-anchor="middle">${yr}</text>`;
   }
-  const d = series.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" ");
-  const last = series.at(-1);
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cost in sats over time, log scale">${g}<path d="${d}" fill="none" stroke="#f7931a" stroke-width="2"/>
-    <circle cx="${x(last[0]).toFixed(1)}" cy="${y(last[1]).toFixed(1)}" r="3.5" fill="#fff"/></svg>`;
+  const path = l => l.pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" ");
+  const others = lines.filter(l => l.id !== selId).map(l => `<path d="${path(l)}" fill="none" stroke="${COLORS}" stroke-width="1" opacity=".55"/>`).join("");
+  const sel = lines.find(l => l.id === selId), last = sel.pts.at(-1);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cost in sats over time, as a percent of the 2014 cost, log scale">${g}${others}
+    <path d="${path(sel)}" fill="none" stroke="#f7931a" stroke-width="2.2"/><circle cx="${x(last[0]).toFixed(1)}" cy="${y(last[1]).toFixed(1)}" r="3.5" fill="#fff"/></svg>`;
 }
 
-async function renderHistory() {
-  let data;
-  try { data = await (await fetch("data/history.json", { cache: "no-store" })).json(); } catch (e) { return; }
-  const box = document.getElementById("hist"); box.innerHTML = "";
-  for (const [key, it] of Object.entries(data.items)) {
-    const s = it.series, first = s[0], last = s.at(-1);
-    const at = m => (s.find(p => p[0] === m) || s.find(p => p[0] > m) || last);
-    const steps = [first, at("2018-09"), at("2022-09"), last];
-    // biggest bounce: the most the cost in sats ever rose after a low (a Bitcoin crash)
-    let lowSoFar = s[0], best = { r: 1 };
-    for (const p of s) { if (p[1] < lowSoFar[1]) lowSoFar = p; const r = p[1] / lowSoFar[1]; if (r > best.r) best = { r, from: lowSoFar[0], to: p[0] }; }
-    const f = (1 - last[1] / first[1]) * 100, fell = f >= 99 ? f.toFixed(1) : Math.round(f);
-    let up = 0, n = 0;
-    for (let i = 0; i + 48 < s.length; i++) { n++; if (s[i + 48][1] >= s[i][1]) up++; }   // rolling 4-year windows
-    const el = document.createElement("div"); el.className = "hcard"; el.id = "h-" + key;
-    el.innerHTML = `<h3>${it.name}</h3>
-      <div class="big">${fmtShort(first[1])} sats in ${monthName(first[0])} → <b>${fmtShort(last[1])} sats</b> now (${fell}% fewer)</div>
-      ${chart(s)}
-      <div class="steps">${steps.map(p => `<div><span>${monthName(p[0])}</span><b>${fmtShort(p[1])}</b></div>`).join("")}</div>
-      <div class="dip">Worst stretch: the cost rose ${best.r.toFixed(1)}× from ${monthName(best.from)} to ${monthName(best.to)}, during a Bitcoin crash.<br>
-      4-year windows where it cost <i>more</i> sats: ${up ? `${up} of ${n}` : `none of ${n}`}.</div>`;
-    box.appendChild(el);
+function stats(s) {
+  const first = s[0], last = s.at(-1), ago = s[Math.max(0, s.length - 49)], yr = s[Math.max(0, s.length - 13)];
+  let lowSoFar = s[0], worst = { r: 1 };   // biggest rise in sats after a low = a Bitcoin crash
+  for (const p of s) { if (p[1] < lowSoFar[1]) lowSoFar = p; const r = p[1] / lowSoFar[1]; if (r > worst.r) worst = { r, from: lowSoFar[0], to: p[0] }; }
+  let up = 0, n = 0;
+  for (let i = 0; i + 48 < s.length; i++) { n++; if (s[i + 48][1] >= s[i][1]) up++; }   // every rolling 4-year window
+  return { first, last, ago, worst, up, n, since: last[1] / first[1] - 1, four: last[1] / ago[1] - 1, one: last[1] / yr[1] - 1 };
+}
+const pct = c => { const v = c * 100, a = Math.abs(v); return (v > 0 ? "+" : "−") + (a >= 99 && a < 100 ? a.toFixed(1) : Math.round(a)) + "%"; };
+const satsNow = it => it.usd / (btcLive || MK.btc.usd) * 1e8;
+const fmtSmall = n => n >= 1e6 ? fmtSats(n) : n >= 100 ? Math.round(n).toLocaleString("en-US") : n.toPrecision(3);
+
+const GNOTE = {
+  commodities: "Each line is one unit (ounce, barrel, bushel…) of a front-month futures contract, priced in sats.",
+  currencies: "One unit of each currency, priced in sats. These lines move almost together: currencies moved little against each other compared with how much bitcoin moved against all of them. That's one fact, not 20.",
+  indexes: "One unit of each index (its level, converted to dollars), priced in sats. Price only: with dividends reinvested, stocks would look a bit better than this.",
+};
+
+function renderGroup() {
+  const g = MK.groups[view.g], items = g.items;
+  if (!items.find(i => i.id === view.id)) view.id = items[0].id;
+  document.getElementById("chips").innerHTML = Object.entries(MK.groups).map(([k, v]) =>
+    `<button aria-pressed="${k === view.g}" onclick="view={g:'${k}',id:null};renderGroup()">${v.title}</button>`).join("");
+  const it = items.find(i => i.id === view.id), st = stats(it.series);
+  const rows = items.map(i => { const t = stats(i.series); return `<tr class="${i.id === view.id ? "sel" : ""}" onclick="view.id='${i.id}';renderGroup()">
+      <td>${i.name}</td><td>${fmtSmall(satsNow(i))}</td><td class="${t.since < 0 ? "dn" : "up"}">${pct(t.since)}</td>
+      <td class="${t.four < 0 ? "dn" : "up"}">${pct(t.four)}</td><td class="${t.one < 0 ? "dn" : "up"}">${pct(t.one)}</td><td class="wide">${t.up} of ${t.n}</td></tr>`; }).join("");
+  document.getElementById("group").innerHTML = `<h3>${it.name} <span style="color:var(--muted);font-weight:600;font-size:.9rem">· ${view.g === "indexes" ? it.unit : "1 " + it.unit}</span></h3>
+    <div class="big">${fmtSmall(st.first[1])} sats in ${monthName(st.first[0])} → <b>${fmtSmall(satsNow(it))} sats</b> now</div>
+    ${groupChart(items, it.id)}
+    <div class="dip">Orange: ${it.name}. Grey: the rest of the list. 100% = its cost in sats in ${monthName(st.first[0])}.<br>
+    Worst stretch: the cost in sats rose ${st.worst.r.toFixed(1)}× from ${monthName(st.worst.from)} to ${monthName(st.worst.to)}, during a Bitcoin crash.
+    4-year windows where it cost <i>more</i> sats: ${st.up ? `${st.up} of ${st.n}` : `none of ${st.n}`}.</div>
+    <p class="gnote">${GNOTE[view.g]}</p>
+    <table class="mk"><thead><tr><th>Tap a row</th><th>Sats now</th><th>Since 2014</th><th>Last 4 yrs</th><th>Last year</th><th class="wide">4-yr windows up</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="how">How this list was picked: ${g.how}</p>`;
+  history.replaceState(null, "", `#history/${view.g}/${view.id}`);
+}
+
+function openItem(g, id) { view = { g, id }; show("history"); }
+
+async function loadMarkets() {
+  try { MK = await (await fetch("data/markets.json", { cache: "no-store" })).json(); } catch (e) { return; }
+  const com = Object.fromEntries(MK.groups.commodities.items.map(i => [i.id, i]));
+  for (const it of ITEMS) if (it.hist && com[it.hist]) {
+    it.usd = com[it.hist].usd;
+    it.asof = new Date(com[it.hist].asof + "T12:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   }
+  document.getElementById("dstamp").textContent = `Month-end closes; the latest month is partial. Market data refreshed ${MK.updated}. "Sats now" uses the live bitcoin price.`;
 }
 
 (async () => {
   render(FALLBACK.usd);
-  renderHistory().then(() => {
-    if (location.hash.startsWith("#h-")) show("history", location.hash.slice(1));
-    else if (location.hash === "#history") show("history");
-  });
-  const live = await livePrice();
+  const [live] = await Promise.all([livePrice(), loadMarkets()]);
   const stamp = document.getElementById("stamp");
-  if (live) { render(live.usd); stamp.textContent = `Live from ${live.from}, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`; }
-  else { stamp.textContent = `Live price unavailable; showing the ${FALLBACK.when}.`; }
+  if (live) { btcLive = live.usd; render(live.usd); stamp.textContent = `Live from ${live.from}, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`; }
+  else { render(MK ? MK.btc.usd : FALLBACK.usd); stamp.textContent = MK ? `Live price unavailable; showing the ${MK.btc.asof} close.` : `Live price unavailable; showing the ${FALLBACK.when}.`; }
+  const h = location.hash.split("/");
+  if (h[0] === "#history" && MK) { if (MK.groups[h[1]]) view = { g: h[1], id: h[2] || null }; show("history"); }
+  setInterval(async () => { const l = await livePrice(); if (l) { btcLive = l.usd; render(l.usd); if (!document.getElementById("tab-history").hidden) renderGroup();
+    stamp.textContent = `Live from ${l.from}, ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`; } }, 60000);
 })();
 </script>
 </body>
