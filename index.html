@@ -16,14 +16,25 @@
   <meta property="og:image" content="https://bitcoineatstheworld.com/brand/betw-thumbnail-1200x630.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@btceatstheworld">
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
   <main class="wrap">
     <header class="hero">
       <img class="mark" src="brand/byte-avatar-512.png" alt="Bitcoin Eats the World logo" width="76" height="76">
       <h1>Bitcoin <span>Eats</span> the World</h1>
-      <p class="lede">Short, sharp clips on Bitcoin, money and the tech reshaping both.</p>
+      <p class="lede">Everything, priced in bitcoin. Live.</p>
+
+      <section class="live" aria-label="Priced in bitcoin, live">
+        <p class="live-big">$1 buys <b id="satsper">…</b> sats today</p>
+        <p class="live-was">At the end of September 2014 it bought <b id="sats2014">…</b>. 1 BTC = <span id="btcusd">…</span></p>
+        <table class="live-t">
+          <thead><tr><th>Priced in sats</th><th>Now</th><th>Since 2014</th><th>Last year</th></tr></thead>
+          <tbody id="live-rows"></tbody>
+        </table>
+        <p class="live-note">Mostly one fact seen many ways: bitcoin's dollar price. The red ones went the other way. History, not a forecast; bitcoin can fall 50% or more.</p>
+        <p style="margin:14px 0 0"><a class="btn" href="prices.html">See all 55, with charts →</a></p>
+      </section>
 
       <nav class="socials" aria-label="Social accounts">
         <a href="https://www.youtube.com/@bitcoineatstheworld" rel="me noopener" target="_blank">
@@ -43,7 +54,6 @@
           X
         </a>
       </nav>
-      <p style="margin:18px 0 0"><a class="btn" href="prices.html">Everything, priced in bitcoin →</a></p>
     </header>
 
     <section id="newsletter" aria-labelledby="nl-title">
@@ -120,6 +130,35 @@
       grid.appendChild(el);
     }
     document.getElementById("yr").textContent = new Date().getFullYear();
+
+    // Live "priced in bitcoin" panel. Fixed picks: the dollar, gold, oil and the S&P 500 (familiar, not chosen for results).
+    const PICKS = [["currencies", "USD", "One US dollar"], ["commodities", "gold", "Ounce of gold"],
+                   ["commodities", "oil", "Barrel of oil"], ["indexes", "sp500", "S&P 500"]];
+    const fmtSats = n => n >= 1e6 ? (n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 2 }) + "M" : Math.round(n).toLocaleString("en-US");
+    const pct = (a, b) => { const v = (a / b - 1) * 100; return `<td class="${v > 0 ? "up" : "dn"}">${v > 0 ? "+" : ""}${Math.round(v)}%</td>`; };
+    let MK = null;
+    async function livePrice() {
+      try { const j = await (await fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot", { cache: "no-store" })).json(); const v = parseFloat(j.data.amount); if (v > 0) return v; } catch (e) {}
+      try { const j = await (await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd", { cache: "no-store" })).json(); if (j.bitcoin.usd > 0) return j.bitcoin.usd; } catch (e) {}
+      return MK ? MK.btc.usd : null;
+    }
+    function renderLive(btc) {
+      document.getElementById("satsper").textContent = Math.round(1e8 / btc).toLocaleString("en-US");
+      document.getElementById("btcusd").textContent = "$" + Math.round(btc).toLocaleString("en-US");
+      if (!MK) return;
+      const usd = MK.groups.currencies.items.find(i => i.id === "USD");
+      if (usd) document.getElementById("sats2014").textContent = Math.round(usd.series[0][1]).toLocaleString("en-US");
+      document.getElementById("live-rows").innerHTML = PICKS.map(([g, id, name]) => {
+        const it = MK.groups[g].items.find(i => i.id === id); if (!it) return "";
+        const now = it.usd / btc * 1e8, s = it.series, yr = s[Math.max(0, s.length - 13)][1];
+        return `<tr><td>${name}</td><td>${fmtSats(now)}</td>${pct(now, s[0][1])}${pct(now, yr)}</tr>`;
+      }).join("");
+    }
+    (async () => {
+      try { MK = await (await fetch("data/markets.json", { cache: "no-store" })).json(); } catch (e) {}
+      const b = await livePrice(); if (b) renderLive(b);
+      setInterval(async () => { const v = await livePrice(); if (v) renderLive(v); }, 60000);
+    })();
   </script>
 </body>
 </html>

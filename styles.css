@@ -136,3 +136,17 @@ footer p { margin: 0 0 8px; }
 
 /* Beehiiv's form iframe: matching color-scheme lets its transparent background show through on this dark page */
 .signup-slot iframe { color-scheme: normal; }
+
+/* Live "priced in bitcoin" panel (home hero) */
+.live { border: 1px solid #3a2a12; border-radius: var(--radius); padding: 22px 16px; margin: 26px 0 8px;
+  background: linear-gradient(160deg, #1d1609, var(--panel) 60%); }
+.live-big { font-size: clamp(1.5rem, 6vw, 2.2rem); font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+.live-big b { color: var(--orange); }
+.live-was { color: var(--muted); margin: 6px 0 14px; }
+.live-was b { color: var(--text); }
+.live-t { width: 100%; border-collapse: collapse; font-size: .95rem; font-variant-numeric: tabular-nums; }
+.live-t th { color: #77746e; font-weight: 600; font-size: .75rem; padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: right; }
+.live-t td { padding: 9px 4px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.live-t th:first-child, .live-t td:first-child { text-align: left; white-space: normal; font-weight: 600; }
+.live-t td.dn { color: #7fbf7f; } .live-t td.up { color: #e07a6a; }
+.live-note { color: #77746e; font-size: .8rem; margin: 10px 0 0; }
